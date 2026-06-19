@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CHATTERBOX_DIR="$(realpath "$SCRIPT_DIR/../chatterbox-master")"
+CHATTERBOX_DIR="$(realpath "$SCRIPT_DIR/chatterbox-master")"
 BACKEND_DIR="$SCRIPT_DIR/backend"
 FRONTEND_DIR="$SCRIPT_DIR/frontend"
 VENV_DIR="$SCRIPT_DIR/.venv"

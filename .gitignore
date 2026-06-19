@@ -1,21 +1,25 @@
-# Vendored third-party dependency — reference it via run.sh / README
+# Vendored third-party dependency — installed by run.sh
 chatterbox-master/
 
 # Python
-**/.venv/
-**/__pycache__/
-**/*.pyc
-**/*.egg-info/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
 
 # Node
-**/node_modules/
-**/dist/
+node_modules/
+frontend/dist/
 
-# Generated runtime data
-voiceforge/data/
+# Generated runtime data (voices, audio, SQLite DB)
+data/
 
 # Test artefacts
-voiceforge/test_output.wav
+test_output.wav
 
 # Model weights cache
 .cache/
