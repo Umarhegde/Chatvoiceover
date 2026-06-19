@@ -4,7 +4,6 @@ import { Play, Pause, Download } from 'lucide-react'
 import { api } from '../api'
 
 interface AudioPlayerProps {
-  /** Either a full URL or just the filename (e.g. "abc123.wav") */
   src: string
   ffmpegAvailable?: boolean
 }
@@ -17,100 +16,76 @@ export function AudioPlayer({ src, ffmpegAvailable = false }: AudioPlayerProps) 
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
 
-  // Derive the full audio URL
   const audioUrl = src.startsWith('/') || src.startsWith('http') ? src : api.audioUrl(src)
-  // Derive the filename for download URLs
   const filename = src.split('/').pop() ?? src
 
   useEffect(() => {
     if (!containerRef.current) return
-
     const ws = WaveSurfer.create({
       container: containerRef.current,
-      waveColor: '#4f46e5',
-      progressColor: '#818cf8',
-      cursorColor: '#c7d2fe',
+      waveColor: 'rgba(124,58,237,0.4)',
+      progressColor: '#a78bfa',
+      cursorColor: '#7c3aed',
       barWidth: 2,
       barGap: 1,
-      barRadius: 2,
-      height: 56,
+      barRadius: 3,
+      height: 52,
       normalize: true,
       backend: 'WebAudio',
     })
-
     ws.load(audioUrl)
-
-    ws.on('ready', () => {
-      setReady(true)
-      setDuration(ws.getDuration())
-    })
-
-    ws.on('audioprocess', () => {
-      setCurrentTime(ws.getCurrentTime())
-    })
-
+    ws.on('ready', () => { setReady(true); setDuration(ws.getDuration()) })
+    ws.on('audioprocess', () => setCurrentTime(ws.getCurrentTime()))
     ws.on('finish', () => setPlaying(false))
     ws.on('play', () => setPlaying(true))
     ws.on('pause', () => setPlaying(false))
-
     wsRef.current = ws
-
-    return () => {
-      ws.destroy()
-    }
+    return () => ws.destroy()
   }, [audioUrl])
 
-  function togglePlay() {
-    wsRef.current?.playPause()
-  }
-
-  function fmt(s: number): string {
-    const m = Math.floor(s / 60)
-    const sec = Math.floor(s % 60)
-    return `${m}:${sec.toString().padStart(2, '0')}`
-  }
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
   return (
-    <div className="card mt-4">
-      <div className="flex items-center gap-3 mb-2">
+    <div className="card p-4 mt-4 animate-fade-in">
+      <div className="flex items-center gap-3 mb-3">
         <button
-          onClick={togglePlay}
+          onClick={() => wsRef.current?.playPause()}
           disabled={!ready}
-          className="w-9 h-9 flex items-center justify-center bg-forge-accent hover:bg-forge-accent-hover rounded-full transition-colors disabled:opacity-40 shrink-0"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-accent
+                     shadow-glow-sm hover:brightness-110 active:scale-95 transition-all
+                     disabled:opacity-40 shrink-0"
         >
-          {playing ? <Pause className="w-4 h-4 text-white" /> : <Play className="w-4 h-4 text-white ml-0.5" />}
+          {playing
+            ? <Pause className="w-4 h-4 text-white" />
+            : <Play className="w-4 h-4 text-white ml-0.5" />}
         </button>
+
         <div className="flex-1 min-w-0">
-          <div ref={containerRef} className="w-full" />
+          {ready
+            ? <div ref={containerRef} className="w-full" />
+            : <div className="skeleton h-8 rounded-lg w-full" />}
         </div>
-        <span className="text-xs text-forge-muted shrink-0 tabular-nums">
+
+        <span className="text-xs text-vf-muted tabular-nums shrink-0 font-mono">
           {fmt(currentTime)} / {fmt(duration)}
         </span>
       </div>
 
-      <div className="flex gap-2 mt-3">
-        <a
-          href={audioUrl}
-          download
-          className="flex items-center gap-1.5 text-sm btn-secondary"
-        >
+      <div className="flex items-center gap-2 pt-2 border-t border-vf-border">
+        <a href={audioUrl} download className="btn-secondary text-xs gap-1.5 px-3 py-1.5">
           <Download className="w-3.5 h-3.5" />
-          Download WAV
+          WAV
         </a>
         {ffmpegAvailable && (
-          <a
-            href={`/api/audio/${filename}/mp3`}
-            download
-            className="flex items-center gap-1.5 text-sm btn-secondary"
-          >
+          <a href={`/api/audio/${filename}/mp3`} download className="btn-secondary text-xs gap-1.5 px-3 py-1.5">
             <Download className="w-3.5 h-3.5" />
-            Download MP3
+            MP3
           </a>
         )}
         {!ffmpegAvailable && (
-          <span className="text-xs text-forge-muted self-center">
-            MP3: install ffmpeg-free for MP3 downloads
-          </span>
+          <p className="text-[11px] text-vf-muted">
+            Install <code className="text-vf-text-dim">ffmpeg</code> to enable MP3 downloads
+          </p>
         )}
       </div>
     </div>

@@ -10,15 +10,17 @@ export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen overflow-hidden bg-vf-bg">
           <Sidebar />
-          <main className="flex-1 overflow-y-auto bg-forge-bg">
-            <Routes>
-              <Route path="/" element={<Generate />} />
-              <Route path="/voices" element={<Voices />} />
-              <Route path="/vc" element={<VoiceConversion />} />
-              <Route path="/history" element={<HistoryPage />} />
-            </Routes>
+          <main className="flex-1 overflow-y-auto">
+            <div className="bg-gradient-glow min-h-full">
+              <Routes>
+                <Route path="/" element={<Generate />} />
+                <Route path="/voices" element={<Voices />} />
+                <Route path="/vc" element={<VoiceConversion />} />
+                <Route path="/history" element={<HistoryPage />} />
+              </Routes>
+            </div>
           </main>
         </div>
       </ToastProvider>

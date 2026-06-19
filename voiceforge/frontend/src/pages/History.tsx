@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Trash2, Play, Pause, Download, History } from 'lucide-react'
+import { Trash2, Play, Pause, Download, Clock, Trash } from 'lucide-react'
 import { api } from '../api'
 import type { HistoryItem } from '../types'
 import { useToast } from '../components/Toast'
@@ -12,7 +12,6 @@ function HistoryCard({ item, ffmpegAvailable, onDeleted }: {
   const toast = useToast()
   const [playing, setPlaying] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-
   const filename = item.file_path.split('/').pop() ?? ''
   const audioUrl = api.audioUrl(filename)
 
@@ -21,12 +20,8 @@ function HistoryCard({ item, ffmpegAvailable, onDeleted }: {
       audioRef.current = new Audio(audioUrl)
       audioRef.current.onended = () => setPlaying(false)
     }
-    if (playing) {
-      audioRef.current.pause()
-      setPlaying(false)
-    } else {
-      audioRef.current.play().then(() => setPlaying(true)).catch(() => {})
-    }
+    if (playing) { audioRef.current.pause(); setPlaying(false) }
+    else audioRef.current.play().then(() => setPlaying(true)).catch(() => {})
   }
 
   async function del() {
@@ -35,62 +30,53 @@ function HistoryCard({ item, ffmpegAvailable, onDeleted }: {
       await api.deleteHistory(item.id)
       onDeleted(item.id)
       toast.success('Deleted')
-    } catch (err: any) {
-      toast.error(err.message)
-    }
+    } catch (err: any) { toast.error(err.message) }
   }
 
+  const date = new Date(item.created_at * 1000)
+  const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+
   return (
-    <div className="card">
+    <div className="card p-4 hover:border-vf-border-hi transition-colors">
       <div className="flex items-start gap-3">
+        {/* Play */}
         <button
           onClick={togglePlay}
-          className="w-9 h-9 shrink-0 flex items-center justify-center bg-forge-accent/15 hover:bg-forge-accent/30 rounded-full transition-colors mt-0.5"
+          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-vf-surface border border-vf-border hover:border-vf-accent/50 hover:bg-vf-accent-dim transition-all mt-0.5"
         >
           {playing
-            ? <Pause className="w-3.5 h-3.5 text-forge-accent" />
-            : <Play className="w-4 h-4 text-forge-accent ml-0.5" />
-          }
+            ? <Pause className="w-3.5 h-3.5 text-vf-accent" />
+            : <Play className="w-4 h-4 text-vf-accent ml-0.5" />}
         </button>
 
+        {/* Text + meta */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-forge-text line-clamp-2 mb-1">{item.text}</p>
-          <div className="flex items-center gap-3 text-xs text-forge-muted">
-            <span className={`px-2 py-0.5 rounded-full font-medium
-              ${item.engine === 'turbo'
-                ? 'bg-amber-900/40 text-amber-300'
-                : 'bg-purple-900/40 text-purple-300'
-              }`}
-            >
+          <p className="text-sm text-vf-text leading-relaxed line-clamp-2 mb-2">{item.text}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={item.engine === 'turbo' ? 'badge-turbo' : 'badge-standard'}>
               {item.engine}
             </span>
-            <span>{new Date(item.created_at * 1000).toLocaleString()}</span>
+            <span className="text-xs text-vf-muted flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {dateStr} · {timeStr}
+            </span>
           </div>
         </div>
 
+        {/* Download / delete */}
         <div className="flex items-center gap-1 shrink-0">
-          <a
-            href={audioUrl}
-            download
-            className="p-1.5 text-forge-muted hover:text-forge-text rounded-lg hover:bg-forge-surface transition-colors"
-            title="Download WAV"
-          >
+          <a href={audioUrl} download title="Download WAV"
+            className="btn-ghost p-2">
             <Download className="w-4 h-4" />
           </a>
           {ffmpegAvailable && (
-            <a
-              href={`/api/audio/${filename}/mp3`}
-              download
-              className="p-1.5 text-forge-muted hover:text-forge-text rounded-lg hover:bg-forge-surface transition-colors text-xs font-medium"
-              title="Download MP3"
-            >
+            <a href={`/api/audio/${filename}/mp3`} download title="Download MP3"
+              className="btn-ghost p-2 text-xs font-semibold">
               MP3
             </a>
           )}
-          <button
-            onClick={del}
-            className="p-1.5 text-red-500 hover:text-red-400 rounded-lg hover:bg-red-950/30 transition-colors"
-          >
+          <button onClick={del} className="btn-danger p-2" title="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -100,37 +86,60 @@ function HistoryCard({ item, ffmpegAvailable, onDeleted }: {
 }
 
 export function HistoryPage() {
+  const toast = useToast()
   const [items, setItems] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [ffmpegAvailable, setFfmpegAvailable] = useState(false)
 
   useEffect(() => {
-    Promise.all([api.history(), api.status()]).then(([h, s]) => {
-      setItems(h)
-      setFfmpegAvailable(s.ffmpeg_available)
-    }).catch(() => {}).finally(() => setLoading(false))
+    Promise.all([api.history(), api.status()])
+      .then(([h, s]) => { setItems(h); setFfmpegAvailable(s.ffmpeg_available) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
+  async function clearAll() {
+    if (!confirm(`Delete all ${items.length} history entries?`)) return
+    try {
+      await Promise.all(items.map(i => api.deleteHistory(i.id)))
+      setItems([])
+      toast.success('History cleared')
+    } catch (err: any) { toast.error(err.message) }
+  }
+
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-bold text-forge-text mb-1">History</h1>
-      <p className="text-forge-muted text-sm mb-6">Past generations — play, download, or delete.</p>
+    <div className="max-w-2xl mx-auto px-6 py-8 animate-fade-in">
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="page-title">History</h1>
+          <p className="page-subtitle">Past generations — play, download, or delete</p>
+        </div>
+        {items.length > 0 && (
+          <button onClick={clearAll} className="btn-danger text-xs gap-1.5 mt-1">
+            <Trash className="w-3.5 h-3.5" />
+            Clear all
+          </button>
+        )}
+      </div>
 
       {loading ? (
-        <p className="text-forge-muted text-sm">Loading…</p>
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map(i => <div key={i} className="skeleton h-24 rounded-2xl" />)}
+        </div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 text-forge-muted">
-          <History className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No history yet — generate some speech first.</p>
+        <div className="text-center py-20">
+          <Clock className="w-12 h-12 mx-auto mb-4 text-vf-muted opacity-30" />
+          <p className="text-sm text-vf-muted">No history yet — generate some speech first</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="space-y-2">
+          <p className="text-xs text-vf-muted mb-3">{items.length} generation{items.length !== 1 ? 's' : ''}</p>
           {items.map(item => (
             <HistoryCard
               key={item.id}
               item={item}
               ffmpegAvailable={ffmpegAvailable}
-              onDeleted={id => setItems(prev => prev.filter(x => x.id !== id))}
+              onDeleted={id => setItems(p => p.filter(x => x.id !== id))}
             />
           ))}
         </div>

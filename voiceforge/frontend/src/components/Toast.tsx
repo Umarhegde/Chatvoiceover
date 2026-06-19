@@ -1,21 +1,37 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { CheckCircle, XCircle, X } from 'lucide-react'
+import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
+import { CheckCircle2, XCircle, X, Info } from 'lucide-react'
 
-type ToastType = 'success' | 'error'
+type ToastType = 'success' | 'error' | 'info'
 
-interface Toast {
-  id: string
-  type: ToastType
-  message: string
+interface Toast { id: string; type: ToastType; message: string }
+
+interface Ctx {
+  success: (msg: string) => void
+  error: (msg: string) => void
+  info: (msg: string) => void
 }
 
-interface ToastContextValue {
-  toast: (type: ToastType, message: string) => void
-  success: (message: string) => void
-  error: (message: string) => void
+const ToastContext = createContext<Ctx | null>(null)
+
+const META: Record<ToastType, { Icon: typeof CheckCircle2; colors: string }> = {
+  success: { Icon: CheckCircle2, colors: 'bg-emerald-950/90 border-emerald-700/40 text-emerald-200' },
+  error:   { Icon: XCircle,      colors: 'bg-red-950/90 border-red-700/40 text-red-200' },
+  info:    { Icon: Info,         colors: 'bg-vf-card border-vf-border-hi text-vf-text-dim' },
 }
 
-const ToastContext = createContext<ToastContextValue | null>(null)
+function ToastItem({ t, remove }: { t: Toast; remove: () => void }) {
+  const { Icon, colors } = META[t.type]
+  return (
+    <div className={`flex items-start gap-3 px-4 py-3 rounded-2xl border shadow-xl
+                     backdrop-blur-sm animate-fade-up max-w-sm ${colors}`}>
+      <Icon className="w-4 h-4 shrink-0 mt-0.5 opacity-80" />
+      <p className="text-sm flex-1 leading-snug">{t.message}</p>
+      <button onClick={remove} className="opacity-40 hover:opacity-80 transition-opacity ml-1">
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -23,55 +39,30 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const add = useCallback((type: ToastType, message: string) => {
     const id = String(++counter.current)
-    setToasts(prev => [...prev, { id, type, message }])
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id))
-    }, 4500)
+    setToasts(p => [...p, { id, type, message }])
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000)
   }, [])
 
-  const value: ToastContextValue = {
-    toast: add,
-    success: msg => add('success', msg),
-    error: msg => add('error', msg),
-  }
-
   return (
-    <ToastContext.Provider value={value}>
+    <ToastContext.Provider value={{
+      success: m => add('success', m),
+      error:   m => add('error', m),
+      info:    m => add('info', m),
+    }}>
       {children}
-      <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50 max-w-sm">
+      <div className="fixed bottom-5 right-5 flex flex-col gap-2 z-50 pointer-events-none">
         {toasts.map(t => (
-          <ToastItem key={t.id} toast={t} onDismiss={() =>
-            setToasts(prev => prev.filter(x => x.id !== t.id))
-          } />
+          <div key={t.id} className="pointer-events-auto">
+            <ToastItem t={t} remove={() => setToasts(p => p.filter(x => x.id !== t.id))} />
+          </div>
         ))}
       </div>
     </ToastContext.Provider>
   )
 }
 
-function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
-  const isSuccess = toast.type === 'success'
-  return (
-    <div className={`flex items-start gap-3 p-4 rounded-xl shadow-xl border animate-fade-in
-      ${isSuccess
-        ? 'bg-emerald-950/90 border-emerald-700/50 text-emerald-200'
-        : 'bg-red-950/90 border-red-700/50 text-red-200'
-      }`}
-    >
-      {isSuccess
-        ? <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-        : <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-      }
-      <p className="text-sm flex-1 leading-snug">{toast.message}</p>
-      <button onClick={onDismiss} className="text-current opacity-50 hover:opacity-100 transition-opacity">
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  )
-}
-
-export function useToast(): ToastContextValue {
+export function useToast(): Ctx {
   const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast must be used inside ToastProvider')
+  if (!ctx) throw new Error('useToast must be inside ToastProvider')
   return ctx
 }

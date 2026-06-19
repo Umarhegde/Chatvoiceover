@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -16,18 +17,28 @@ import numpy as np
 import random
 import torch
 import torchaudio
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware
 
 import db
 from jobs import job_queue, JobStatus
 from tts_engine import DEVICE, model_manager
 
+# ── logging ───────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+log = logging.getLogger("voiceforge")
+
 # ── constants ─────────────────────────────────────────────────────────
 MAX_TEXT_CHARS = 8000
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
 DATA_DIR = Path(__file__).parent.parent / "data"
 VOICES_DIR = DATA_DIR / "voices"
 AUDIO_DIR = DATA_DIR / "audio"
@@ -38,7 +49,7 @@ for _d in [VOICES_DIR, AUDIO_DIR]:
 db.init_db()
 
 # ── app ───────────────────────────────────────────────────────────────
-app = FastAPI(title="VoiceForge", version="1.0.0")
+app = FastAPI(title="VoiceForge", version="1.0.0", docs_url="/api/docs", redoc_url=None)
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,6 +57,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # ── helpers ───────────────────────────────────────────────────────────
@@ -109,6 +132,24 @@ def _free_ram_gb() -> float:
 
 def _safe_filename(name: str) -> bool:
     return bool(re.match(r"^[a-zA-Z0-9_\-\.]+$", name))
+
+
+# ── /health ───────────────────────────────────────────────────────────
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+# ── request logging ───────────────────────────────────────────────────
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.monotonic()
+    response = await call_next(request)
+    elapsed = (time.monotonic() - start) * 1000
+    log.info("%s %s %d %.0fms", request.method, request.url.path, response.status_code, elapsed)
+    return response
 
 
 # ── /api/status ───────────────────────────────────────────────────────
@@ -265,7 +306,11 @@ async def api_upload_voice(
     voice_dir.mkdir()
 
     raw_path = voice_dir / f"original{suffix}"
-    raw_path.write_bytes(await file.read())
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        shutil.rmtree(voice_dir, ignore_errors=True)
+        raise HTTPException(413, f"File too large (max {MAX_UPLOAD_BYTES // 1024 // 1024} MB)")
+    raw_path.write_bytes(data)
 
     # Convert to WAV for chatterbox compatibility
     if suffix != ".wav":
@@ -338,9 +383,12 @@ async def api_voice_conversion(
     if suffix not in ALLOWED_AUDIO_SUFFIXES:
         raise HTTPException(400, f"Unsupported source format {suffix}")
 
+    data = await source.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, f"File too large (max {MAX_UPLOAD_BYTES // 1024 // 1024} MB)")
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=suffix)
     try:
-        os.write(tmp_fd, await source.read())
+        os.write(tmp_fd, data)
     finally:
         os.close(tmp_fd)
 

@@ -1,124 +1,196 @@
 # VoiceForge
 
-A free, offline, English-only text-to-speech + voice cloning studio running entirely on your local machine.
-Powered by [Chatterbox TTS](https://github.com/resemble-ai/chatterbox) by Resemble AI.
+[![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10–3.13-blue)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18-61dafb)](https://react.dev)
+[![Powered by Chatterbox](https://img.shields.io/badge/Powered%20by-Chatterbox%20TTS-orange)](https://github.com/resemble-ai/chatterbox)
 
-## Hardware target
+**A free, offline, open-source text-to-speech and voice cloning studio — runs 100% on your local machine.**
 
-These defaults are tuned for: **AMD Ryzen 5 3500U · Radeon Vega 8 (no GPU acceleration) · 16 GB RAM · Fedora Linux**.
-Generation runs on **CPU only** and takes **tens of seconds to several minutes per sentence** — this is normal.
+No API keys. No cloud. No subscriptions. Your voice data never leaves your computer.
 
-## Prerequisites
+![VoiceForge screenshot](https://raw.githubusercontent.com/Umarhegde/Chatvoiceover/main/docs/screenshot.png)
 
-| Tool | Version | Install |
-|------|---------|---------|
-| Python | 3.10 – 3.13 | `sudo dnf install python3` |
-| Node.js | 18+ | `sudo dnf install nodejs npm` (or let `run.sh` install via fnm) |
-| ffmpeg (optional) | any | `sudo dnf install ffmpeg-free` — enables MP3 downloads |
+---
 
-> **First run only:** the backend downloads ~2–3 GB of Chatterbox model weights from HuggingFace
-> (cached in `~/.cache/huggingface`). Subsequent runs are fully offline.
+## Features
+
+| | |
+|---|---|
+| **Text-to-speech** | English TTS via Chatterbox Turbo (350M) or Standard (500M) |
+| **Voice cloning** | Zero-shot: upload a 5–20s reference clip, generate in that voice |
+| **Voice conversion** | Change the speaker in any audio file to a saved voice |
+| **Paralinguistic tags** | Turbo engine supports `[laugh]`, `[sigh]`, `[cough]` and more |
+| **Offline-first** | Models are cached locally after first download — no internet required |
+| **History** | Every generation is saved locally with play/download |
+| **Privacy** | No telemetry, no accounts, no outbound traffic after model download |
+
+---
 
 ## Quick start
 
+### Requirements
+
+| Tool | Version | Install (Fedora/RHEL) |
+|------|---------|----------------------|
+| Python | 3.10 – 3.13 | `sudo dnf install python3.12` |
+| Node.js | 18+ | auto-installed by `run.sh` via fnm, or `sudo dnf install nodejs` |
+| ffmpeg | any | `sudo dnf install ffmpeg-free` — **optional**, enables MP3 downloads |
+
+> Ubuntu/Debian: replace `dnf` with `apt`. macOS: use `brew`.
+
+### Run
+
 ```bash
-cd voiceforge
-./run.sh           # builds frontend, opens http://localhost:8000
-./run.sh --dev     # dev mode: Vite (port 5173) + FastAPI (port 8000) with hot-reload
+git clone https://github.com/Umarhegde/Chatvoiceover
+cd Chatvoiceover/voiceforge
+chmod +x run.sh
+./run.sh          # production mode → http://localhost:8000
+./run.sh --dev    # dev mode: hot-reload frontend on :5173 + API on :8000
 ```
 
-The script will:
-1. Create a Python venv in `.venv/`
-2. Install `chatterbox-tts` from `../chatterbox-master` in editable mode (pulls torch, etc.)
-3. Install FastAPI / Uvicorn
-4. Install frontend npm packages and build the React app
-5. Launch the server
+`run.sh` handles everything automatically:
+1. Picks the best available Python (3.12 → 3.13 → 3.11 → 3.10)
+2. Creates `.venv/` and installs all Python dependencies
+3. Installs Chatterbox TTS from the bundled source
+4. Runs `npm install` and builds the React frontend
+5. Launches the server
+
+> **First generation:** downloads ~2–3 GB of model weights from HuggingFace (cached after that). Subsequent runs are fully offline.
+
+---
 
 ## Engines
 
-| Engine | Params | Speed on CPU | Features |
-|--------|--------|--------------|----------|
-| **Turbo** (default) | 350M | Faster | Paralinguistic tags `[laugh]`, `[cough]`, etc. |
-| **Standard** | 500M | Slower | CFG weight, exaggeration, Min-P controls |
+| Engine | Params | CPU speed* | Best for |
+|--------|--------|-----------|----------|
+| **Turbo** (default) | 350M | ~14× real-time | Fast drafts, paralinguistic tags |
+| **Standard** | 500M | ~17× real-time | Richer prosody, CFG / exaggeration controls |
 
-## Voice cloning
+\*Measured on AMD Ryzen 5 3500U (4 cores, CPU-only). "14× real-time" means 1s of audio takes ~14s to generate.
 
-1. Go to **Voices** → drop/upload a 5–20s clean speech clip (WAV or MP3).
-2. On the **Generate** page, select "Saved voice" and pick your uploaded voice.
-3. The clip is passed as an audio prompt (zero-shot voice cloning).
+**Expected generation times (Ryzen 5 3500U):**
 
-## Voice conversion
+| Text length | Turbo | Standard |
+|-------------|-------|---------|
+| One sentence | 70–100s | 85–120s |
+| One paragraph (5 sentences) | 6–9 min | 7–10 min |
+| 500 words | ~45 min | ~55 min |
 
-Upload any speech audio (in any voice) and a saved target voice → the output
-has the target speaker's voice while preserving the content.
+These times drop significantly on machines with more cores or a GPU.
 
-## Text chunking
+---
 
-Long texts are automatically split into 1–2 sentence chunks and concatenated.
-This keeps peak RAM bounded. Individual chunks of complex prose can still
-take 1–4 minutes each on the Ryzen 3500U.
+## Usage
 
-## Troubleshooting
+### Generate speech
+1. Type or paste English text (or upload a `.txt` file)
+2. Choose engine (Turbo / Standard) and voice
+3. Adjust advanced parameters if needed (temperature, CFG weight, etc.)
+4. Click **Generate** or press **Ctrl+Enter**
+5. Play the result inline or download WAV / MP3
 
-**"Out of memory" / process killed**
-- The 3500U has ~7–8 GB free. The Standard model can spike to ~6 GB.
-  Close other browser tabs and apps before generating with Standard engine.
-- Switching engines explicitly unloads the previous model before loading the next.
+### Clone a voice
+1. Go to **Voices** → drag-and-drop a 5–20s audio clip of the target speaker
+2. On the **Generate** page, select "Saved voice" and pick it from the list
 
-**Generation never completes / hangs**
-- The job queue has a single worker. If one job is running, others queue behind it.
-  Check the progress counter on the Generate page.
+### Convert a voice
+Go to **Voice Conversion**: upload any speech audio + select a saved target voice → the output preserves speech content in the new voice.
 
-**ffmpeg not found**
-```bash
-sudo dnf install ffmpeg-free
-```
+---
 
-**Node.js not found**
-```bash
-sudo dnf install nodejs npm
-```
-or let `run.sh` auto-install via fnm (no sudo required).
+## API reference
 
-**Cannot import chatterbox**
-The chatterbox package is installed editable from `../chatterbox-master`.
-Make sure you run `./run.sh` (which activates the venv) rather than running
-`python backend/main.py` directly from a system Python.
+The backend is a FastAPI app at `http://localhost:8000`. Interactive docs: `http://localhost:8000/api/docs`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/api/status` | Device, loaded model, free RAM |
+| POST | `/api/tts` | Submit TTS job (JSON) |
+| GET | `/api/jobs/{id}` | Poll job status |
+| GET | `/api/voices` | List saved voices |
+| POST | `/api/voices` | Upload voice clip (multipart) |
+| PATCH | `/api/voices/{id}` | Rename voice |
+| DELETE | `/api/voices/{id}` | Delete voice |
+| GET | `/api/voices/{id}/audio` | Stream voice clip |
+| POST | `/api/vc` | Submit voice conversion job |
+| POST | `/api/upload-text` | Upload `.txt` → returns text |
+| GET | `/api/audio/{file}` | Download generated WAV |
+| GET | `/api/audio/{file}/mp3` | Download as MP3 (needs ffmpeg) |
+| GET | `/api/history` | List generation history |
+| DELETE | `/api/history/{id}` | Delete history item |
+
+---
 
 ## Project structure
 
 ```
 voiceforge/
 ├── backend/
-│   ├── main.py          # FastAPI app + all endpoints
-│   ├── tts_engine.py    # Model singleton (lazy load, memory discipline)
-│   ├── jobs.py          # In-process job queue
-│   ├── db.py            # SQLite (voices + history)
+│   ├── main.py          # FastAPI app — all endpoints, middleware, job dispatch
+│   ├── tts_engine.py    # Model singleton: lazy load, strict single-model-in-RAM discipline
+│   ├── jobs.py          # Single-worker ThreadPoolExecutor job queue
+│   ├── db.py            # SQLite — voices + generation history (stdlib only)
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
-│       ├── pages/       # Generate, Voices, VoiceConversion, History
-│       └── components/  # Sidebar, Toast, AudioPlayer
+│       ├── pages/       # Generate · Voices · VoiceConversion · History
+│       ├── components/  # Sidebar · AudioPlayer · Toast
+│       ├── api.ts       # Typed fetch wrappers
+│       └── types.ts     # Shared TypeScript interfaces
 ├── data/                # Created at runtime (gitignored)
-│   ├── voices/
-│   └── audio/
-├── test_tts.py          # CLI smoke-test: loads Turbo, generates one sentence
-└── run.sh
+│   ├── voices/          # Uploaded voice clips
+│   └── audio/           # Generated WAV files
+├── run.sh               # One-command launcher
+├── test_tts.py          # CLI smoke-test
+├── USER_MANUAL.md       # Detailed usage guide
+├── CONTRIBUTING.md      # Contributor guide
+└── LICENSE              # MIT
 ```
 
-## API reference (brief)
+---
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/status` | Device, loaded model, free RAM |
-| POST | `/api/tts` | Submit TTS job (JSON body) |
-| GET | `/api/jobs/{id}` | Poll job status |
-| GET | `/api/voices` | List saved voices |
-| POST | `/api/voices` | Upload voice clip |
-| DELETE | `/api/voices/{id}` | Delete voice |
-| POST | `/api/vc` | Submit voice conversion job |
-| POST | `/api/upload-text` | Upload .txt file → returns text string |
-| GET | `/api/audio/{file}` | Serve generated WAV |
-| GET | `/api/audio/{file}/mp3` | Serve as MP3 (needs ffmpeg) |
-| GET | `/api/history` | List history |
-| DELETE | `/api/history/{id}` | Delete history item |
+## Troubleshooting
+
+**Out of memory / process killed**
+Close other apps and browser tabs. The Standard model can spike to ~6 GB RAM. Switching engines unloads the previous model first.
+
+**Generation never completes**
+A single background worker processes one job at a time. Check the chunk progress counter on the Generate page.
+
+**`ModuleNotFoundError: No module named 'pip'`**
+Delete `.venv/` and re-run `./run.sh` — the script will recreate it cleanly.
+
+**ffmpeg not found**
+```bash
+sudo dnf install ffmpeg-free   # Fedora
+sudo apt install ffmpeg        # Ubuntu/Debian
+brew install ffmpeg            # macOS
+```
+
+**`Cannot import chatterbox`**
+Run `./run.sh` (not `python backend/main.py` directly). The venv must be active.
+
+---
+
+## Hardware notes
+
+Optimised for: **AMD Ryzen 5 3500U · 16 GB RAM · CPU-only · Fedora Linux**.
+Works on any x86-64 Linux, macOS (Intel or Apple Silicon), and Windows (WSL2).
+GPU acceleration (CUDA / MPS) is detected automatically if available.
+
+---
+
+## License
+
+[MIT](LICENSE) © 2025 Umar Hegde
+
+Powered by [Chatterbox TTS](https://github.com/resemble-ai/chatterbox) by Resemble AI (MIT License).
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). All contributions welcome — bug reports, features, docs, and translations.

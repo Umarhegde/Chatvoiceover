@@ -6,41 +6,138 @@
   html, body, #root {
     height: 100%;
   }
+
   body {
-    @apply bg-forge-bg text-forge-text;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    @apply bg-vf-bg text-vf-text antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
   }
+
   * {
-    @apply border-forge-border;
+    @apply border-vf-border;
   }
-  ::-webkit-scrollbar {
-    width: 6px;
+
+  ::selection {
+    background: rgba(124, 58, 237, 0.35);
+    color: #eef0f9;
   }
-  ::-webkit-scrollbar-track {
-    @apply bg-forge-bg;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-forge-border rounded-full;
-  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { @apply bg-vf-bg; }
+  ::-webkit-scrollbar-thumb { @apply bg-vf-border rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-vf-border-hi; }
 }
 
 @layer components {
+  /* ── Buttons ───────────────────────────────── */
   .btn-primary {
-    @apply bg-forge-accent hover:bg-forge-accent-hover text-white font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply relative inline-flex items-center justify-center gap-2
+           px-4 py-2.5 rounded-xl font-semibold text-sm text-white
+           bg-gradient-accent shadow-glow-sm
+           hover:brightness-110 active:brightness-95
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
   }
+
   .btn-secondary {
-    @apply bg-forge-card hover:bg-forge-border text-forge-text font-medium px-4 py-2 rounded-lg border border-forge-border transition-colors;
+    @apply inline-flex items-center justify-center gap-2
+           px-3.5 py-2 rounded-xl font-medium text-sm text-vf-text-dim
+           bg-vf-card border border-vf-border
+           hover:bg-vf-card-hover hover:text-vf-text hover:border-vf-border-hi
+           active:scale-[0.98] transition-all duration-150;
   }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2
+           px-3 py-1.5 rounded-lg text-sm text-vf-muted
+           hover:text-vf-text hover:bg-vf-card
+           transition-all duration-150;
+  }
+
   .btn-danger {
-    @apply bg-red-900/30 hover:bg-red-800/50 text-red-400 font-medium px-3 py-1.5 rounded-lg border border-red-800/40 transition-colors text-sm;
+    @apply inline-flex items-center justify-center gap-1.5
+           px-3 py-1.5 rounded-lg text-sm text-red-400
+           hover:text-red-300 hover:bg-red-500/10
+           transition-all duration-150;
   }
+
+  /* ── Cards ─────────────────────────────────── */
   .card {
-    @apply bg-forge-card border border-forge-border rounded-xl p-4;
+    @apply bg-gradient-card border border-vf-border rounded-2xl
+           shadow-card transition-all duration-200;
   }
+
+  .card-hover {
+    @apply card hover:border-vf-border-hi hover:shadow-card-hover cursor-pointer;
+  }
+
+  /* ── Form controls ──────────────────────────── */
   .input {
-    @apply bg-forge-surface border border-forge-border rounded-lg px-3 py-2 text-forge-text placeholder-forge-muted focus:outline-none focus:ring-2 focus:ring-forge-accent focus:border-transparent transition-all w-full;
+    @apply w-full bg-vf-surface border border-vf-border rounded-xl
+           px-3.5 py-2.5 text-sm text-vf-text placeholder-vf-muted
+           focus:outline-none focus:ring-2 focus:ring-vf-accent/50 focus:border-vf-accent/60
+           transition-all duration-150;
   }
+
   .label {
-    @apply text-sm font-medium text-forge-text-dim mb-1 block;
+    @apply block text-xs font-semibold uppercase tracking-widest
+           text-vf-muted mb-2;
   }
+
+  /* ── Badges ─────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5
+           rounded-full text-xs font-medium;
+  }
+
+  .badge-turbo {
+    @apply badge bg-amber-500/15 text-amber-300 border border-amber-500/20;
+  }
+
+  .badge-standard {
+    @apply badge bg-violet-500/15 text-violet-300 border border-violet-500/20;
+  }
+
+  .badge-cpu {
+    @apply badge bg-sky-500/10 text-sky-400 border border-sky-500/20;
+  }
+
+  /* ── Section headers ────────────────────────── */
+  .page-title {
+    @apply text-2xl font-bold tracking-tight text-vf-text;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-vf-muted mt-1;
+  }
+
+  /* ── Dividers ───────────────────────────────── */
+  .divider {
+    @apply border-t border-vf-border my-4;
+  }
+
+  /* ── Range slider ───────────────────────────── */
+  input[type="range"] {
+    @apply w-full h-1.5 rounded-full appearance-none cursor-pointer;
+    background: linear-gradient(to right, #7c3aed var(--pct, 50%), #1f2337 var(--pct, 50%));
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    @apply appearance-none w-3.5 h-3.5 rounded-full bg-white shadow-glow-sm;
+    border: 2px solid #7c3aed;
+  }
+
+  /* ── Progress bar ───────────────────────────── */
+  .progress-bar {
+    @apply h-1.5 rounded-full bg-vf-border overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full rounded-full bg-gradient-accent transition-all duration-500;
+  }
+}
+
+/* shimmer skeleton */
+.skeleton {
+  background: linear-gradient(90deg, #141720 25%, #1f2337 50%, #141720 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
 }
