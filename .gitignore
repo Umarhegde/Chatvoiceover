@@ -1,0 +1,26 @@
+# Vendored third-party dependency — reference it via run.sh / README
+chatterbox-master/
+
+# Python
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.egg-info/
+
+# Node
+**/node_modules/
+**/dist/
+
+# Generated runtime data
+voiceforge/data/
+
+# Test artefacts
+voiceforge/test_output.wav
+
+# Model weights cache
+.cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Node
+node_modules/
+frontend/dist/
+
+# Generated data (voices, audio, DB)
+data/
+
+# Model cache
+~/.cache/huggingface/
+
+# Test output
+test_output.wav
+
+# IDE
+.idea/
+.vscode/
+*.swp
