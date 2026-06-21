@@ -1,4 +1,4 @@
-# VoiceForge
+# Chatvoiceover
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10–3.13-blue)](https://python.org)
